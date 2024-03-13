@@ -1,0 +1,211 @@
+
+#helper functions:
+
+#' Generate individual term based on cluster term and normal distribution
+#'
+#' This function generates an individual term based on a cluster term and a normal distribution.
+#' The cluster term is selected from `mu_c` based on the index `c`, and the individual term is generated
+#' by drawing from a normal distribution with mean equal to the cluster term and standard deviation 5.
+#' The number of individual terms generated is determined by `n_c[c]`.
+#'
+#' @param c An index for selecting the cluster term from `mu_c` and the number of terms from `n_c`.
+#' @param mu_c A vector of cluster terms.
+#' @param n_c A vector of the number of individual terms to generate for each cluster.
+#'
+#' @return A vector of individual terms.
+#' @export
+helper_indi_term_c <-  function(c, mu_c, n_c){
+        cluster_term = mu_c[c]
+        indi_term = rnorm(n_c[c], cluster_term, 5)
+        return(indi_term)
+}
+#functions to help create simulated data:
+#1 fixed value simulation (only sim once)
+
+#' Simulate fixed values for a given number of clusters
+#'
+#' This function simulates fixed values for a given number of clusters (C). It generates
+#' the overall cluster mean, number of observations in each cluster, total number of observations,
+#' probability of being untreated on the cluster level, cluster level treatment assignment, individual term, cluster,
+#' never treated, and treatment.
+#'
+#' @param C An integer. The number of clusters.
+#' @param ... Additional arguments if need to change distributions of the fixed terms
+#' 
+#' @return A list containing the following elements:
+#' * mu_c: A numeric vector. The overall cluster mean. \in R^{C x 1}
+#' * n_c: A numeric vector. The number of observations in each cluster. \in R^{C x 1}
+#' * n: An integer. The total number of observations. \in R
+#' * W_p: A numeric vector. The probability of being untreated. \in R^{C x 1}
+#' * W_c: A numeric vector. The cluster level treatment assignment. W_c = 1 => never treated cluster \in R^{C x 1}
+#' * indi_term: A numeric vector. The individual term. \in R^{n x 1}
+#' * cluster: A numeric vector. The cluster. \in R^{n x 1}
+#' * never_trt: A numeric vector. The never treated. \in R^{n x 1}
+#' * trt: A numeric vector. The treatment. \in R^{n x 1} 
+#'
+#' @examples
+#' \dontrun{
+#' fixed_value_simulation(5)
+#' }
+#' @export
+fixed_value_simulation <- function(C, ...){
+    res <- list()
+    res$mu_c <- rnorm(C, 3, 1) #overall cluster mean is set to be 3, variance is 1
+    res$n_c <- rpois(C, 10) #number of observations in each cluster
+    res$n <- sum(res$n_c) #total number of observations
+    res$W_p <- 1 - gtools::inv.logit(res$mu_c, min = 0, max = 0.8)#probability of being untreated
+    res$W_c <- rbinom(C, 1, res$W_p) #cluster level treatment assignment, W_c = 1 means untreated
+    indi_term <- lapply(1:C, helper_indi_term_c, mu_c = res$mu_c, n_c = res$n_c)
+    res$indi_term = unlist(indi_term)
+    res$cluster = rep(1:C, res$n_c)
+    res$never_trt <- res$W_c[rep(1:C, res$n_c)]
+    res$trt <- 1 - res$never_trt
+    return(res)
+}
+
+#2 simulate potential outcome under control Y_t(inf)
+#'
+#' This function simulates a dataframe of potential outcomes under control for a given number of time points such that Y_t(inf) = indi_term + v_t, where v_0 = norm(n, 0,1) and v_t = norm(n, v_t_minus_1, 1) for t = 1, 2, ..., t_total.
+#'
+#' @param t_total The total number of time points (excluding t = 0) for the simulation 
+#' @param fixed_res A list returned from the 'fixed_value_simulation' function. 
+#' The list 'res' should contain the following elements: "n", "indi_term".
+#' @return A data frame where each column represents the Y_inf at a different time point \in R^{n x t_total + 1}]}
+#' @export
+sim_Y_t_inf <- function(t_total, fixed_res){
+    t_seq <- 0:t_total
+    v_0 <- rnorm(fixed_res$n, 0, 1)
+    v_t <- Reduce(function(v_t_minus_1, t) {
+        rnorm(fixed_res$n, v_t_minus_1, 1)
+    }, 1:t_total, init = v_0, accumulate = TRUE)
+    df <- data.frame(do.call(cbind, v_t)) #create a df of time varying errors 
+    df <- apply(df, 2, function(x) x + fixed_res$indi_term) #add individual term to each column
+    colnames(df) <- t_seq
+    return(df)
+}
+
+#3 simulate treatment distribution
+# g \in {1, ..., t_total, t_total + 1} where t_total + 1 is the never/not yet treated 
+#default that all units follow the same treatment distribution but can be changed via inputting a treat_prob_fun. 
+# ... the output of fixed_value_simulation
+#returns
+
+#' Simulate treatment distribution
+#'
+#' This function simulates the distribution of treatment times for a set of units.
+#' By default, all units have the same probability of being treated at any time point     #' from 1:t_total,
+#' but a custom treatment probability function can be provided.
+#'
+#' @param t_total The total number of time points (excluding t = 0) for the simulation 
+#' @param fixed_res A list containing fixed results from the 'fixed_value_simulation' function.
+#' @param ... Additional arguments passed to the function.
+#' @param treat_prob_fun A function that takes 't_total' as input and returns a vector of treatment probabilities.
+#' If NULL (the default), all time points have equal probability of treatment.
+#' @return A data frame with n rows and columns 'G' (the treatment time), 'cluster' (the cluster ID), 'Gmin' (the minimum treatment time in the cluster), and 'G_mod' (the modified treatment time, with 't_total + 1' indicating never treated).
+#' @export
+treatment_time_G <- function(t_total, fixed_res, ..., treat_prob_fun = NULL){
+    g_seq <- 1:(t_total + 1)
+    if (is.null(treat_prob_fun)){
+        treat_prob_fun <- function(t_total){ #equal prob of being treated at any time point
+            treat_prob <- rep(1/(t_total + 10), t_total)
+            treat_prob <- c(treat_prob, 1 - sum(treat_prob))
+            return(treat_prob)
+        }
+    }
+    G_prob <- treat_prob_fun(t_total)
+    G <- sample(g_seq, fixed_res$n, replace = TRUE, prob = G_prob) # if each i has the same prob of being treated at any time point, need to be updated if that's not the case. 
+    df <- data.frame(G=G, cluster=fixed_res$cluster)
+    df$G_mod <- ifelse(fixed_res$trt == 1, df$G, t_total + 1) #include cluster level treatment information, G_mod = t_total + 1 means never treated
+    df$G_min <- ave(df$G_mod, fixed_res$cluster, FUN = function(x) min(x))
+    return(df)
+}
+
+#' Calculate the treatment effect over time
+#'
+#' This function calculates the treatment effect over time based on the proportion of treatment,
+#' individual treatment, and past treatment effect. The treatment effect at each time point is
+#' calculated as the sum of the cluster effect, individual effect, and past effect.
+#'
+#' @param t_total The total time period (excluding time = 0).
+#' @param fixed_res A list containing fixed results from the 'fixed_value_simulation' function.
+#' @param treatment_df A data frame containing the treatment info G, cluster, G_min, and G_mod.
+#' @param cluster_coef The coefficient for the cluster effect.
+#' @param indi_coef The coefficient for the individual effect.
+#' @param past_coef The coefficient for the past effect.
+#'
+#' @return A data frame containing the treatment effect at each time point.
+#' @export
+treatment_effect <- function(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef){
+    prop_trt <- function(time) {
+        return(ave(treatment_df$G_mod <= time, treatment_df$cluster, FUN = mean))
+    }
+    indi_trt <- function(time) {
+        return(treatment_df$G_mod <= time)
+    }
+    TE_0 <- rep(0, fixed_res$n)
+    TE_t <- Reduce(function(TE_t_minus_1, t) {
+        cluster_coef*prop_trt(t) + indi_coef*indi_trt(t) + past_coef*TE_t_minus_1
+    }, 1:t_total, init = TE_0, accumulate = TRUE)
+    df <- data.frame(do.call(cbind, TE_t)) #create a df of of the treatment effect at each time point
+    colnames(df) <- 0:t_total
+    return(df)
+}
+
+#' Generate a data frame of potential outcomes over time
+#'
+#' This function generates a data frame of potential outcomes over time based on the treatment effect,
+#' the simulated Y_t_inf, and the treatment data. The potential outcomes are calculated as the sum of
+#' Y_t_inf and the treatment effect. The function can return the data in either long or wide format.
+#'
+#' @param t_total The total time period (excluding t = 0).
+#' @param fixed_res A list containing fixed results from the 'fixed_value_simulation' function.
+#' @param treatment_df A data frame containing the treatment info G, cluster, G_min, and G_mod.
+#' @param cluster_coef The coefficient for the cluster effect.
+#' @param indi_coef The coefficient for the individual effect.
+#' @param past_coef The coefficient for the past effect.
+#' @param long Logical indicating whether to return the data in long format. If TRUE, the data is returned
+#' in long format with one row per time point per individual. If FALSE, the data is returned in wide format
+#' with one row per individual and one column per time point. Default is TRUE.
+#'
+#' @return A data frame of potential outcomes over time. If `long` is TRUE, the data frame also includes
+#' the treatment effect and Y_t_inf at each time point.
+#' @export
+#'
+#' @examples
+# t_total <- 10
+# C = 10 
+# fixed_res <- fixed_value_simulation(C)
+# treatment_df <- treatment_time_G(t_total, fixed_res)
+# cluster_coef <- 3
+# indi_coef <- 3
+# past_coef <- 0.5
+#' potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef)
+potential_outcome_df <- function(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef, long=TRUE){
+    df_TE <- treatment_effect(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef)
+    df_Y_inf <- sim_Y_t_inf(t_total, fixed_res)
+    df_Y_G <- df_Y_inf + df_TE
+    df_Y_G$id <- 1:fixed_res$n
+    df_Y_G$cluster <- fixed_res$cluster
+    df_Y_G$G <- treatment_df$G_mod
+    df_Y_G$G_min <- treatment_df$G_min
+
+    if (long){
+        df_Y_G_long <- reshape2::melt(df_Y_G, id.vars = c("id", "cluster", "G", "G_min"), variable.name = "time", value.name = "Y_G")
+        df_Y_G_long$TE <- reshape2::melt(df_TE, id.vars = NULL, variable.name = "time", value.name = "TE")$TE
+        df_Y_G_long$Y_inf <- reshape2::melt(df_Y_inf, id.vars = NULL, variable.name = "time", value.name = "Y_inf")$Y_inf
+        return(df_Y_G_long)
+    } else {
+        return(df_Y_G)
+    }
+}
+
+#potential_outcome_df(t_total, fixed_res, treatment_df, 3, 3, 0.5, long=TRUE)
+# t_total <- 10
+# C = 10 
+# fixed_res <- fixed_value_simulation(C)
+# treatment_df <- treatment_time_G(t_total, fixed_res)
+# cluster_coef <- 3
+# indi_coef <- 3
+# past_coef <- 0.5
+# df_TE <- treatment_effect(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef)
+# df_Y_inf <- sim_Y_t_inf(t_total, fixed_res)
