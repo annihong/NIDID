@@ -172,13 +172,13 @@ treatment_effect <- function(t_total, fixed_res, treatment_df, cluster_coef, ind
 #' @export
 #'
 #' @examples
-# t_total <- 10
-# C = 10 
-# fixed_res <- fixed_value_simulation(C)
-# treatment_df <- treatment_time_G(t_total, fixed_res)
-# cluster_coef <- 3
-# indi_coef <- 3
-# past_coef <- 0.5
+#' t_total <- 10
+#' C = 10 
+#' fixed_res <- fixed_value_simulation(C)
+#' treatment_df <- treatment_time_G(t_total, fixed_res)
+#' cluster_coef <- 3
+#' indi_coef <- 3
+#' past_coef <- 0.5
 #' potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef)
 potential_outcome_df <- function(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef, long=TRUE){
     df_TE <- treatment_effect(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef)

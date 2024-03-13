@@ -41,5 +41,12 @@ the simulated Y_t_inf, and the treatment data. The potential outcomes are calcul
 Y_t_inf and the treatment effect. The function can return the data in either long or wide format.
 }
 \examples{
+t_total <- 10
+C = 10 
+fixed_res <- fixed_value_simulation(C)
+treatment_df <- treatment_time_G(t_total, fixed_res)
+cluster_coef <- 3
+indi_coef <- 3
+past_coef <- 0.5
 potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef)
 }
