@@ -4,7 +4,7 @@
 \alias{sim_Y_t_inf}
 \title{This function simulates a dataframe of potential outcomes under control for a given number of time points such that Y_t(inf) = indi_term + v_t, where v_0 = norm(n, 0,1) and v_t = norm(n, v_t_minus_1, 1) for t = 1, 2, ..., t_total.}
 \usage{
-sim_Y_t_inf(t_total, fixed_res)
+sim_Y_t_inf(t_total, fixed_res, beta = 0)
 }
 \arguments{
 \item{t_total}{The total number of time points (excluding t = 0) for the simulation}

@@ -87,16 +87,13 @@ sim_Y_t_inf <- function(t_total, fixed_res, beta=0){ #beta is the AR(1) coeffici
 
 #generic, can be used for simulating cluster or individual level treatment assignment
 # size = n or C depending on the level of treatment assignment
-treat_sim_fun_uniform <- function(options, size, n, prob=FALSE){ #equal prob of being treated at any time point
+treat_sim_fun_uniform <- function(options, size){ #equal prob of being treated at any time point except for t = 0
     treat_prob <- rep(1/length(options), length(options))
-    res <- sample(options, size, replace = TRUE, prob = treat_prob) 
-    if (prob == TRUE){
-        res <- data.frame(t(treat_prob))
-        res <- res[rep(1, n),]
-        colnames(res) <- options
+    res <- data.frame(t(treat_prob))
+    res <- res[rep(1, size),]
+    colnames(res) <- options
+    return(res)
     }
-     return(res)
-}
 #3 simulate treatment distribution
 # g \in {1, ..., t_total, t_total + 1} where t_total + 1 is the never/not yet treated 
 #default that all units follow the same treatment distribution but can be changed via inputting a treat_prob_fun. 
@@ -116,11 +113,13 @@ treat_sim_fun_uniform <- function(options, size, n, prob=FALSE){ #equal prob of 
 #' If NULL (the default), all time points have equal probability of treatment.
 #' @return A data frame with n rows and columns 'G' (the treatment time), 'cluster' (the cluster ID), 'Gmin' (the minimum treatment time in the cluster), and 'G_mod' (the modified treatment time, with 't_total + 1' indicating never treated).
 #' @export
-treatment_time_G <- function(t_total, fixed_res, ..., treat_sim_fun = treat_sim_fun_uniform){
+treatment_time_G <- function(t_total, fixed_res, df_prob_cluster_g, df_prob_indi_l, ...){
     #first simulate cluster level treatment time:
-    gmin <- treat_sim_fun(1:(t_total + 1), fixed_res$C, fixed_res$n) #number of options = t_total + 1 where t_total + 1 is the never/not yet treated
+    gmin <- as.numeric(sapply(1:nrow(df_prob_cluster_g), function(x) sample(colnames(df_prob_cluster_g), size=1, prob=df_prob_cluster_g[x,])))
+    #gmin <- treat_sim_fun(1:(t_total + 1), fixed_res$C, fixed_res$n) #number of options = t_total + 1 where t_total + 1 is the never/not yet treated
     gmin_n <- rep(gmin,fixed_res$n_c)
-    l <- treat_sim_fun(0:(t_total + 1), fixed_res$n, fixed_res$n) #simulate individual level treatment time l, where gmin_c + l_ci = g_ci 
+    #l <- treat_sim_fun(0:(t_total + 1), fixed_res$n, fixed_res$n) #simulate individual level treatment time l, where gmin_c + l_ci = g_ci 
+    l <-  as.numeric(sapply(1:nrow(df_prob_indi_l), function(x) sample(colnames(df_prob_indi_l), size=1, prob=df_prob_indi_l[x,])))
     df <- data.frame(cluster=fixed_res$cluster, cluster_gmin=gmin_n, l = l, g = gmin_n + l)
     return(df)
 }
@@ -212,18 +211,10 @@ observed_df <- function(df_long) {
     return(res)
 }
 
-t_total <- 5
-C = 10
-m = 10
-fixed_res <- fixed_value_simulation(C, m)
-treatment_df <- treatment_time_G(t_total, fixed_res)
-p_gmin_df <- treat_sim_fun_uniform(1:(t_total + 1), fixed_res$C, fixed_res$n, prob=TRUE)
-cluster_coef <- 0
-indi_coef <- 0
-past_coef <- 0
-df_long <- potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef,long=TRUE)
-df_wide <- potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef, long=FALSE)
-df_obs <- observed_df(df_long)
+
+
+
+
 
 
 

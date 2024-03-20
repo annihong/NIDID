@@ -4,7 +4,7 @@
 \alias{fixed_value_simulation}
 \title{Simulate fixed values for a given number of clusters}
 \usage{
-fixed_value_simulation(C, ...)
+fixed_value_simulation(C, m, ...)
 }
 \arguments{
 \item{C}{An integer. The number of clusters.}
@@ -21,8 +21,6 @@ A list containing the following elements:
 \item W_c: A numeric vector. The cluster level treatment assignment. W_c = 1 => never treated cluster \in R^{C x 1}
 \item indi_term: A numeric vector. The individual term. \in R^{n x 1}
 \item cluster: A numeric vector. The cluster. \in R^{n x 1}
-\item never_trt: A numeric vector. The never treated. \in R^{n x 1}
-\item trt: A numeric vector. The treatment. \in R^{n x 1}
 }
 }
 \description{

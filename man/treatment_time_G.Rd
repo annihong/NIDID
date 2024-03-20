@@ -4,7 +4,7 @@
 \alias{treatment_time_G}
 \title{Simulate treatment distribution}
 \usage{
-treatment_time_G(t_total, fixed_res, ..., treat_prob_fun = NULL)
+treatment_time_G(t_total, fixed_res, df_prob_cluster_g, df_prob_indi_l, ...)
 }
 \arguments{
 \item{t_total}{The total number of time points (excluding t = 0) for the simulation}
