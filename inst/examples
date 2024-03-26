@@ -1,25 +1,3 @@
-experiment <- function(t_total, C, m, g, k, cluster_coef, indi_coef, past_coef){
-    fixed_res <- fixed_value_simulation(C, m)
-    df_prob_cluster_g <- treat_sim_fun_uniform(1:(t_total + 1),fixed_res$C)
-    df_prob_cluster_g <- as.data.frame(cbind(rep(0, nrow(df_prob_cluster_g)), df_prob_cluster_g)) #adding the column for time = 0, since no cluster is treated at time = 0
-    colnames(df_prob_cluster_g) <- 0:(t_total + 1) # rename the columns.
-    df_prob_indi_l <- treat_sim_fun_uniform(0:t_total,fixed_res$n) # l \in {0,1,...,t_total}
-    treatment_df <- treatment_time_G(t_total, fixed_res, df_prob_cluster_g, df_prob_indi_l)
-
-    df_long <- potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef,long=TRUE)
-    df_wide <- potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef, long=FALSE)
-    df_obs <- observed_df(df_long)
-
-    tilde_kg_df <- tilde_k_g(df_long, fixed_res, k,g, df_prob_cluster_g, t_total)
-    tilde_kg <- sum(tilde_kg_df$w * tilde_kg_df$TE)
-
-    df_prob_cluster_g_est <- table(factor(ave(treatment_df$cluster_gmin, treatment_df$cluster, FUN = mean), levels = 0:(t_total + 1)))
-    df_prob_cluster_g_est <- df_prob_cluster_g_est/sum(df_prob_cluster_g_est) #empirical probability of each gmin
-    theta_hat_k_g_df <- theta_hat_k_g(df_obs, fixed_res, k,g, df_prob_cluster_g_est, t_total)
-    theta_hat_kg <- sum(theta_hat_k_g_df$w * theta_hat_k_g_df$diff)
-    error <- theta_hat_kg - tilde_kg
-    return(list(tilde_kg = tilde_kg, theta_hat_kg = theta_hat_kg, error = error))
-}
 
 #variables held constant:
 t_total <- 10
