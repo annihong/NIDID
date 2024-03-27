@@ -36,3 +36,74 @@ mean(unlist(res_df$theta_tilde_k), na.rm = TRUE)
 mean(unlist(res_df$theta_hat_k), na.rm = TRUE)
 mean(unlist(res_df$error), na.rm = TRUE)
 mean(unlist(res_df$omega_hat_over_tilde), na.rm = TRUE)
+
+
+
+
+######################
+  # define arguments here, e.g.
+# n_sims <- 10
+# n_cores <- 4
+
+
+
+# res <- run_sim(n_sims, n_cores, generate_sim = data_sim_single, get_results = theta_tilde_k, generate_sim_args = list(t_total=10, C=50, m=25, cluster_coef=3, indi_coef=3, past_coef=1), get_results_args = list(k = 1, result = "theta_tilde_k_ci"))
+
+# # save file
+# timestamp <- format(Sys.time(), "%d-%b-%Y-%H-%M-%S")
+# sim_name <- "tidle_k_ci_clusterw"
+# path <- ""
+# res_name <- paste(path,
+#                 paste(sim_name,
+#                         timestamp, sep = "_"),
+#                 ".rds", sep = "")
+# save(res, file=res_name)
+
+load("tidle_k_ci_clusterw_27-Mar-2024-17-16-42.rds")
+true_theta_tilde_ci <- Reduce("+", res)/n_sims
+
+
+####theta_hat####
+# n_sims <- 500
+# n_cores <- 4
+
+# res <- run_sim(n_sims, n_cores, generate_sim = data_sim_single, get_results = theta_hat_k, generate_sim_args = list(t_total=10, C=50, m=25, cluster_coef=3, indi_coef=3, past_coef=1), get_results_args = list(k = 1, result = "theta_hat_k_ci"))
+
+# # save file
+# timestamp <- format(Sys.time(), "%d-%b-%Y-%H-%M-%S")
+# sim_name <- "theta_hat_k_ci"
+# path <- ""
+# res_name <- paste(path,
+#                 paste(sim_name,
+#                         timestamp, sep = "_"),
+#                 ".rds", sep = "")
+# save(res, file=res_name)
+
+load("theta_hat_k_ci_27-Mar-2024-17-25-48.rds")
+theta_hats <- res
+
+fixed_res <- fixed_value_simulation(C=50, m=25)
+
+get_est_single_run <- function(theta_hat_ci, true_theta_tilde_ci){
+    theta_hat <- sum(theta_hat_ci)
+    true_theta_tilde <- sum(true_theta_tilde_ci)
+    bias <- sum(theta_hat_ci) - sum(true_theta_tilde_ci)
+    mse <- bias^2
+    omega_hat_n <- omega_hat_n(theta_hat_ci, fixed_res)
+    omega_tilde_n <- omega_tilde_n(theta_hat_ci, true_theta_tilde_ci, fixed_res)
+    CI_upper <- sum(theta_hat_ci) + 1.96 * sqrt(omega_hat_n/fixed_res$n)
+    CI_lower <- sum(theta_hat_ci) - 1.96 * sqrt(omega_hat_n/fixed_res$n)
+    return(c(bias = bias, mse = mse, omega_hat_n = omega_hat_n, omega_tilde_n = omega_tilde_n, CI_upper = CI_upper, CI_lower = CI_lower, true_theta_tilde = true_theta_tilde, theta_hat=theta_hat))
+}
+
+estimates <- lapply(theta_hats, get_est_single_run, true_theta_tilde_ci = true_theta_tilde_ci)
+est_df <- data.frame(do.call(rbind, estimates))
+
+average_bias <- mean(est_df$bias, na.rm = TRUE)
+mse <- mean(est_df$mse, na.rm = TRUE)
+omega_n_est <- fixed_res$n*var(est_df$theta_hat, na.rm = TRUE)
+average_ratio <- mean(est_df$omega_hat_n/est_df$omega_tilde_n, na.rm = TRUE)
+average_ratio_est <- mean(est_df$omega_hat_n/omega_n_est, na.rm = TRUE)
+average_coverage <- mean(est_df$CI_lower <= est_df$true_theta_tilde & est_df$CI_upper >= est_df$true_theta_tilde, na.rm = TRUE)
+
+final_res <- list(average_bias = average_bias, mse = mse, average_ratio = average_ratio, average_coverage = average_coverage, average_ratio_est = average_ratio_est)

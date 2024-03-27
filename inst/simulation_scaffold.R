@@ -52,34 +52,34 @@ if(!interactive()) {
 
 
   # define arguments here, e.g.
-  n_sims <- 10
-  n_cores <- 1
+  n_sims <- 500
+  n_cores <- 4
 
 
 
-  args <- commandArgs(TRUE)
-  if(length(args) != 0) {
-      for(i in 1:length(args)) {
-          eval(parse(text = args[i]))
-      }
-  }
-  print(args)
+  # args <- commandArgs(TRUE)
+  # if(length(args) != 0) {
+  #     for(i in 1:length(args)) {
+  #         eval(parse(text = args[i]))
+  #     }
+  # }
+  # print(args)
 
   # put in other function args here
-  res <- NIDID::run_sim(n_sims, n_cores, generate_sim = data_sim_single, get_results = NIDID::theta_tilde_k, generate_sim_args = list(t_total=10, C=50, m=25, cluster_coef=3, indi_coef=3, past_coef=1), get_results_args = list(k = 1, result = "theta_tilde_k_ci"))
+  res <- run_sim(n_sims, n_cores, generate_sim = data_sim_single, get_results = theta_tilde_k, generate_sim_args = list(t_total=10, C=50, m=25, cluster_coef=3, indi_coef=3, past_coef=1), get_results_args = list(k = 1, result = "theta_tilde_k_ci"))
   
   # save file
   timestamp <- format(Sys.time(), "%d-%b-%Y-%H-%M-%S")
   
   
-  sim_name <- "tidle_k_ci_cluster_coef=3_indi_coef=3_past_coef=1"
+  sim_name <- "tidle_k_ci_clusterw"
 
-  path <- "results/"
+  path <- ""
 
   res_name <- paste(path,
                     paste(sim_name,
                           timestamp, sep = "_"),
-                    ".csv", sep = "")
-  write_csv(res, res_name)
+                    ".rds", sep = "")
+  save(res, file=res_name)
 }
 

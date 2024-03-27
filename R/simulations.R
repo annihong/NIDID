@@ -273,8 +273,10 @@ data_sim_single <-  function(t_total, C, m, cluster_coef, indi_coef, past_coef) 
     df_long <- potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef,long=TRUE)
     df_wide <- potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef, long=FALSE)
     df_obs <- observed_df(df_long)
+    cluster_min <- aggregate(cluster_gmin ~ cluster, treatment_df, mean)$cluster_gmin
+    gmin_frequency <- table(factor(cluster_min, levels = 1:(t_total + 1)))
 
-    return(list(df_long = df_long, df_wide = df_wide, df_obs = df_obs, fixed_res = fixed_res, treatment_df = treatment_df, df_prob_cluster_g = df_prob_cluster_g, df_prob_indi_l = df_prob_indi_l, t_total = t_total))
+    return(list(df_long = df_long, df_wide = df_wide, df_obs = df_obs, fixed_res = fixed_res, treatment_df = treatment_df, df_prob_cluster_g = df_prob_cluster_g, df_prob_indi_l = df_prob_indi_l, t_total = t_total, gmin_frequency = gmin_frequency))
 
 }
 

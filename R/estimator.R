@@ -58,7 +58,7 @@ theta_tilde_k_g <- function(df_long, fixed_res, k,g, marginal_prob_gmin_trt_g, t
     return(w)
 }
 #' @export
-theta_hat_k <- function(df_obs, fixed_res, k,g, gmin_frequency, t_total, result=NULL){
+theta_hat_k <- function(df_obs, fixed_res, k, gmin_frequency, t_total, result=NULL){
     g_seq <- 1:(t_total - k) #we won't be able to estimate theta for g > t_total - k
     treated_df <- df_obs[df_obs$cluster_gmin <= t_total & df_obs$time == 0,]
     n_trt <- nrow(treated_df) 
