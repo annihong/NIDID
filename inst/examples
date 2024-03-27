@@ -1,11 +1,11 @@
 
 #variables held constant:
 t_total <- 10
-C <- 50 
+C <- 50
 m <- 25
-g <- 3
+#g <- 1
 k <- 1
-B <- 500
+B <- 100
 
 # zero treatment effects
 res_df <- replicate(B, experiment(t_total=t_total, C=C, m=m, g=g, k=k, cluster_coef=0, indi_coef=0, past_coef=0), simplify = FALSE)
@@ -29,5 +29,10 @@ mean(unlist(res_df$error), na.rm = TRUE)
 # [1] 1.792538
 # [1] -0.03365801
 
-
-
+# non-zero treatment effects
+res_df <- replicate(B, experiment_k(t_total=t_total, C=C, m=m, g=g, k=k, cluster_coef=3, indi_coef=3, past_coef=1), simplify = FALSE)
+res_df <- as.data.frame(do.call(rbind, res_df))
+mean(unlist(res_df$theta_tilde_k), na.rm = TRUE)
+mean(unlist(res_df$theta_hat_k), na.rm = TRUE)
+mean(unlist(res_df$error), na.rm = TRUE)
+mean(unlist(res_df$omega_hat_over_tilde), na.rm = TRUE)

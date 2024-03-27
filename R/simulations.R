@@ -223,19 +223,104 @@ experiment <- function(t_total, C, m, g, k, cluster_coef, indi_coef, past_coef){
     df_wide <- potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef, long=FALSE)
     df_obs <- observed_df(df_long)
 
-    tilde_kg_df <- tilde_k_g(df_long, fixed_res, k,g, df_prob_cluster_g, t_total)
-    tilde_kg <- sum(tilde_kg_df$w * tilde_kg_df$TE)
+    theta_tilde_kg <- theta_tilde_k(df_long, fixed_res, k, df_prob_cluster_g, t_total)$theta_tilde_k_g_s[g]
+    #theta_tilde_kg <- sum(theta_tilde_kg_df$w * theta_tilde_kg_df$TE)
 
     cluster_min <- aggregate(cluster_gmin ~ cluster, treatment_df, mean)$cluster_gmin
-    gmin_frequency <- table(factor(cluster_min, levels = 0:(t_total + 1)))
+    gmin_frequency <- table(factor(cluster_min, levels = 1:(t_total + 1)))
     #df_prob_cluster_g_est <- df_prob_cluster_g_est/sum(df_prob_cluster_g_est) #empirical probability of each gmin
-    theta_hat_k_g_df <- theta_hat_k_g(df_obs, fixed_res, k,g, gmin_frequency, t_total)
-    theta_hat_kg <- sum(theta_hat_k_g_df$w * theta_hat_k_g_df$diff)
-    error <- theta_hat_kg - tilde_kg
-    return(list(tilde_kg = tilde_kg, theta_hat_kg = theta_hat_kg, error = error))
+    theta_hat_kg <- theta_hat_k(df_obs, fixed_res, k,g, gmin_frequency, t_total)$theta_hat_k_g_s[g]
+    error <- theta_hat_kg - theta_tilde_kg
+    return(list(theta_tilde_kg = theta_tilde_kg, theta_hat_kg = theta_hat_kg, error = error))
+}
+
+experiment_k <- function(t_total, C, m, g, k, cluster_coef, indi_coef, past_coef){
+    fixed_res <- fixed_value_simulation(C, m)
+    df_prob_cluster_g <- treat_sim_fun_uniform(1:(t_total + 1),fixed_res$C)
+    df_prob_cluster_g <- as.data.frame(cbind(rep(0, nrow(df_prob_cluster_g)), df_prob_cluster_g)) #adding the column for time = 0, since no cluster is treated at time = 0
+    colnames(df_prob_cluster_g) <- 0:(t_total + 1) # rename the columns.
+    df_prob_indi_l <- treat_sim_fun_uniform(0:t_total,fixed_res$n) # l \in {0,1,...,t_total}
+    treatment_df <- treatment_time_G(t_total, fixed_res, df_prob_cluster_g, df_prob_indi_l)
+
+    df_long <- potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef,long=TRUE)
+    df_wide <- potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef, long=FALSE)
+    df_obs <- observed_df(df_long)
+
+    theta_tilde_k_res <- theta_tilde_k(df_long, fixed_res, k, df_prob_cluster_g, t_total)
+    theta_tilde_k <- theta_tilde_k_res$theta_tilde_k
+    #theta_tilde_kg <- sum(theta_tilde_kg_df$w * theta_tilde_kg_df$TE)
+
+    cluster_min <- aggregate(cluster_gmin ~ cluster, treatment_df, mean)$cluster_gmin
+    gmin_frequency <- table(factor(cluster_min, levels = 1:(t_total + 1)))
+    #df_prob_cluster_g_est <- df_prob_cluster_g_est/sum(df_prob_cluster_g_est) #empirical probability of each gmin
+    theta_hat_k_res <- theta_hat_k(df_obs, fixed_res, k,g, gmin_frequency, t_total)
+    theta_hat_k <- theta_hat_k_res$theta_hat_k
+    error <- theta_hat_k - theta_tilde_k
+    omega_hat_n <- omega_hat_n(theta_hat_k_res$theta_hat_k_ci, fixed_res)
+    omega_tilde_n <- omega_tilde_n(theta_hat_k_res$theta_hat_k_ci, theta_tilde_k_res$theta_tilde_k_ci, fixed_res)
+    return(list(theta_tilde_k = theta_tilde_k, theta_hat_k = theta_hat_k, error = error, omega_hat= omega_hat_n))
+}
+
+data_sim_single <-  function(t_total, C, m, cluster_coef, indi_coef, past_coef) {
+    fixed_res <- fixed_value_simulation(C, m)
+    df_prob_cluster_g <- treat_sim_fun_uniform(1:(t_total + 1),fixed_res$C)
+    df_prob_cluster_g <- as.data.frame(cbind(rep(0, nrow(df_prob_cluster_g)), df_prob_cluster_g)) #adding the column for time = 0, since no cluster is treated at time = 0
+    colnames(df_prob_cluster_g) <- 0:(t_total + 1) # rename the columns.
+    df_prob_indi_l <- treat_sim_fun_uniform(0:t_total,fixed_res$n) # l \in {0,1,...,t_total}
+    treatment_df <- treatment_time_G(t_total, fixed_res, df_prob_cluster_g, df_prob_indi_l)
+
+    df_long <- potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef,long=TRUE)
+    df_wide <- potential_outcome_df(t_total, fixed_res, treatment_df, cluster_coef, indi_coef, past_coef, long=FALSE)
+    df_obs <- observed_df(df_long)
+
+    return(list(df_long = df_long, df_wide = df_wide, df_obs = df_obs, fixed_res = fixed_res, treatment_df = treatment_df, df_prob_cluster_g = df_prob_cluster_g, df_prob_indi_l = df_prob_indi_l, t_total = t_total))
+
 }
 
 
+single_run <- function(sim_num, generate_sim, get_results, generate_sim_args = list(), get_results_args = list()) {
+
+  cat("." )
+  if(!(sim_num %% 100)) {
+      cat("\n Simulation number", sim_num, ": ")
+  }
+  
+  # simulate data
+  output <- do.call(generate_sim, generate_sim_args)
+
+  # get results
+#   get_results_quietly <- purrr:::quietly(get_results)
+#   results <-  get_results_quietly(output, ...)$result
+  get_results_quietly <- purrr:::quietly(get_results)
+  args <- c(output, get_results_args)
+  matched_args <- intersect(names(args), names(formals(get_results)))
+  results <-  unlist(do.call(get_results_quietly, args[matched_args])$result)
+
+  #results$sim_num <- sim_num
+  # return the results
+  return(results)
+}
+
+#' Run many simulations in parallel
+#' @param n_sims Number of simulations to run
+#' @param n_cores Number of cores
+#' @param ... Simulation arguments
+# generate_sim, get_results, generate_sim_args = list(), get_results_args = list(),
+run_sim <- function(n_sims, n_cores=1,  ...) {
+
+
+    cat("Number of simulations", n_sims, "\n")
+    ## run n_sim simulations and evaluate
+    out <- parallel::mclapply(
+        1:n_sims,
+        function(j) single_run(j, ...),
+        mc.cores=n_cores)
+
+    #out <- out[lapply(out, function(x) !is.null(names(x))) == TRUE]
+    cat("\n\n")
+    #return(dplyr::bind_rows(out))
+    return(out)
+}
 
 
 
