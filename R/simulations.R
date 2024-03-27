@@ -261,6 +261,7 @@ experiment_k <- function(t_total, C, m, g, k, cluster_coef, indi_coef, past_coef
     return(list(theta_tilde_k = theta_tilde_k, theta_hat_k = theta_hat_k, error = error, omega_hat= omega_hat_n))
 }
 
+#' @export
 data_sim_single <-  function(t_total, C, m, cluster_coef, indi_coef, past_coef) {
     fixed_res <- fixed_value_simulation(C, m)
     df_prob_cluster_g <- treat_sim_fun_uniform(1:(t_total + 1),fixed_res$C)
@@ -277,7 +278,7 @@ data_sim_single <-  function(t_total, C, m, cluster_coef, indi_coef, past_coef) 
 
 }
 
-
+#' @export
 single_run <- function(sim_num, generate_sim, get_results, generate_sim_args = list(), get_results_args = list()) {
 
   cat("." )
@@ -306,6 +307,7 @@ single_run <- function(sim_num, generate_sim, get_results, generate_sim_args = l
 #' @param n_cores Number of cores
 #' @param ... Simulation arguments
 # generate_sim, get_results, generate_sim_args = list(), get_results_args = list(),
+#' @export
 run_sim <- function(n_sims, n_cores=1,  ...) {
 
 
