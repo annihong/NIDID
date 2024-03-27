@@ -66,7 +66,7 @@ if(!interactive()) {
   print(args)
 
   # put in other function args here
-  res <- NIDID::run_sim(n_sims, n_cores, generate_sim = data_sim_single, get_results = theta_tilde_k, generate_sim_args = list(t_total=10, C=50, m=25, cluster_coef=3, indi_coef=3, past_coef=1), get_results_args = list(k = 1, result = "theta_tilde_k_ci"))
+  res <- NIDID::run_sim(n_sims, n_cores, generate_sim = data_sim_single, get_results = NIDID::theta_tilde_k, generate_sim_args = list(t_total=10, C=50, m=25, cluster_coef=3, indi_coef=3, past_coef=1), get_results_args = list(k = 1, result = "theta_tilde_k_ci"))
   
   # save file
   timestamp <- format(Sys.time(), "%d-%b-%Y-%H-%M-%S")

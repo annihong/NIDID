@@ -18,6 +18,7 @@
 #     }
 #     return(treated_df)
 # }
+#' @export
 theta_tilde_k <- function(df_long, fixed_res, k, df_prob_cluster_g, t_total, result=NULL) {
     g_seq=1:t_total
     treated_df <- df_long[df_long$cluster_gmin <= t_total,]
@@ -41,7 +42,7 @@ theta_tilde_k <- function(df_long, fixed_res, k, df_prob_cluster_g, t_total, res
         return(res)
     }
 }
-
+#' @export
 theta_tilde_k_g <- function(df_long, fixed_res, k,g, marginal_prob_gmin_trt_g, t_total, n_trt) {
     w <- rep(0,nrow(df_long)) #weight on all points, but the w = 0 if not treated
     for (i in 1:nrow(df_long)) {
@@ -56,7 +57,7 @@ theta_tilde_k_g <- function(df_long, fixed_res, k,g, marginal_prob_gmin_trt_g, t
     }
     return(w)
 }
-
+#' @export
 theta_hat_k <- function(df_obs, fixed_res, k,g, gmin_frequency, t_total, result=NULL){
     g_seq <- 1:(t_total - k) #we won't be able to estimate theta for g > t_total - k
     treated_df <- df_obs[df_obs$cluster_gmin <= t_total & df_obs$time == 0,]
@@ -81,7 +82,7 @@ theta_hat_k <- function(df_obs, fixed_res, k,g, gmin_frequency, t_total, result=
     }
 }
 
-
+#' @export
 theta_hat_k_g <- function(df_obs, fixed_res, k,g, t_total, gmin_prob_est, n_trt, c_trt, C_trt){
     C = fixed_res$C
     start = g - 1
@@ -110,7 +111,7 @@ theta_hat_k_g <- function(df_obs, fixed_res, k,g, t_total, gmin_prob_est, n_trt,
     }
     return(theta_hat$w * theta_hat$diff)
 }
-
+#' @export
 omega_tilde_n <- function(theta_hat_ci, theta_tilde_ci, fixed_res){
     n <- fixed_res$n
     C <- fixed_res$C
@@ -127,7 +128,7 @@ omega_tilde_n <- function(theta_hat_ci, theta_tilde_ci, fixed_res){
     res <- res / n
     return(res)
 }
-
+#' @export
 omega_hat_n <- function(theta_hat_ci, fixed_res){
     n <- fixed_res$n
     df <- data.frame(theta_hat_ci = theta_hat_ci, cluster=fixed_res$cluster)
